@@ -1,3 +1,146 @@
+11.11.2024
+==========
+release v6.3.5
+better compatibility with OpenWRT
+several fixes
+
+
+04.03.2024
+==========
+README.md: removed entire instructions how to compile hcxdumptool on different distributions
+           check the distribution's page how to update the ditribution, how to install missing dependencies and missing header files
+
+
+25.02.2024
+==========
+release v6.3.4
+release v6.3.3
+internal BPFC compiler enabled by default
+new dependency libpcap
+
+
+04.02.2024
+==========
+hcxdumptool: changed bit mask order of exitoneapol
+--exitoneapol=<type>      : exit on first EAPOL occurrence:
+                             bitmask:
+                              1 = PMKID (from AP)
+                              2 = EAPOL M2M3 (authorized)
+                              4 = EAPOL M1M2/M1M2ROGUE (not authorized)
+                              8 = EAPOL M1
+
+
+06.01.2024
+==========
+hcxdumptool: changed option --beacon_off to --disable_beacon
+
+
+04.12.2023
+==========
+hcxdumptool: allow to set monitor mode (-m) in combination with channel (-c) or frequency (-f)
+
+
+28.12.2023
+==========
+hcxdumptool: do not spam channel with retries
+             changed SNAPLEN
+
+
+22.12.2023
+==========
+hcxdumptool: added BE support
+             removed option beacontx
+--beaconoff  : disable internal BEACON (one BEACON/second to wildcard SSID)
+
+
+08.12.2023
+==========
+Some drivers report incorrectly active monitor mode capability.
+hcxdumptool: do not set active monitor mode by default if driver report that it is possible
+             removed option -p
+             added new option -A in case active monitor mode is working as expected
+             -A             : ACK incoming frames
+                               INTERFACE must support active monitor mode
+
+
+28.11.2023
+==========
+hcxdumptool: added full featured BPF compiler
+             due to additional dependency (libpcap and libpcap-dev) this feature must be enabled in Makefile
+             added PROBEREQUEST counter to rcascan mode
+             added option to sort rcascan display by PROBEREQUEST counter
+
+
+27.11.2023
+==========
+hcxdumptool: accept Berklev Packet filter code in tcpdump raw format and in tcpdump c style format
+-bpf=<file>   : input Berkeley Packet Filter (BPF) code (maximum 4096 instructions)
+                  in tcpdump raw format:
+                   example: tcpdump high level compiler:
+                    $ tcpdump -s 65535 -y IEEE802_11_RADIO wlan addr3 11:22:33:44:55:66 -ddd > filter.bpf
+                    see man pcap-filter
+                   eample: bpf_asm low level compiler
+                    $ bpf_asm filter.asm | tr ',' '\n' > filter.bpf
+                    see https://www.kernel.org/doc/html/latest/networking/filter.html
+                   example: bpfc low level compiler:
+                    $ bpfc -f tcpdump -i filter.asm > filter.bpf
+                    see man bpfc
+                  in tcpdump c style format:
+                   example: tcpdump high level compiler:
+                    $ tcpdump -s 65535 -y IEEE802_11_RADIO wlan addr3 11:22:33:44:55:66 -dd > filter.bpf
+                    see man pcap-filter
+                   example: bpfc low level compiler:
+                    $ bpfc -f C -i filter.asm > filter.bpf
+                    see man bpfc
+
+
+01.11.2023
+==========
+release v6.3.2
+
+
+23.10.2023
+==========
+hcxdumptool: removed option "disable_beacon" because it is replaced by option beacontx=0
+
+
+01.09.2023
+==========
+hcxdumptool: added new option to get shart and greppable interface list
+
+
+26.07.2023
+==========
+hcxdumptool: added compile time information to version information
+
+$ hcxdumptool -v
+hcxdumptool 6.3.1-35-g1a0930e (C) 2023 ZeroBeat
+compiled by gcc 13.1.1
+Linux API headers 6.3.0
+compiled with glibc 2.37
+
+Under normal circumstances, the Linux kernel version could be
+greater than the "Linux API headers" version, but never less.
+
+
+24.07.2023
+==========
+hcxdumptool: added new option to EXIT on EAPOL
+--exitoneapol=<type>           : exit on first EAPOL occurrence:
+                                  bitmask:
+                                   1 = PMKID
+                                   2 = EAPOL M2
+                                   4 = EAPOL M3
+                                  target BPF filter is recommended
+get more information here:
+https://github.com/ZerBea/hcxdumptool/issues/333#issuecomment-1647684235
+
+
+03.07.2023
+==========
+added -Wpedantic to compiler flags and fixed all warnings
+
+
 30.06.2023
 ==========
 release v6.3.1
@@ -1021,7 +1164,7 @@ long options:
 --reboot                           : once hcxdumptool terminated, reboot system
 --poweroff                         : once hcxdumptool terminated, power off system
 --enable_status=<digit>            : enable real-time display (waterfall)
-                                     only incomming traffic
+                                     only incoming traffic
                                      only once at the first occurrence due to MAC randomization of CLIENTs
                                      bitmask:
                                         0: no status (default)
@@ -1727,7 +1870,7 @@ from now on GPIO LED blinks twice every 5 seconds
 - if a possbile driver issue is detected
 - if no packets received during the last past 5 seconds
 
-another indicator is that the incomming packetcounter (rx=xxxx)
+another indicator is that the incoming packetcounter (rx=xxxx)
 doesn't increase
 
 or dmesg show this error:
@@ -1777,7 +1920,7 @@ added option to set ERRORMAX
                  default: 100 errors
 
 Remarks:
-errorcount will increase by one, if send packet (tx=xxx) > 3*incomming packets (rx=xxx)
+errorcount will increase by one, if send packet (tx=xxx) > 3*incoming packets (rx=xxx)
 
 
 15.12.2018

@@ -1,11 +1,13 @@
 /*===========================================================================*/
 #define HCX_BPF				1
-#define HCX_DISABLE_BEACON		2
+#ifdef HCXWANTLIBPCAP
+#define HCX_BPFC			2
+#endif
 #define HCX_DISABLE_DEAUTHENTICATION	3
 #define HCX_DISABLE_PROBEREQUEST	4
 #define HCX_DISABLE_ASSOCIATION		5
 #define HCX_DISABLE_REASSOCIATION	6
-#define HCX_BEACONTX_MAX		7
+#define HCX_DISABLE_BEACON		7
 #define HCX_PROBERESPONSETX_MAX		8
 #define HCX_GPIO_BUTTON			9
 #define HCX_GPIO_STATUSLED		10
@@ -18,33 +20,39 @@
 #define HCX_ON_TOT			17
 #define HCX_ON_GPIOBUTTON		18
 #define HCX_ON_WATCHDOG			19
-#define HCX_ON_ERROR			20
-#define HCX_ESSIDLIST			21
-#define HCX_NMEA0183			22
-#define HCX_GPSD			23
-#define HCX_NMEA0183_OUT		24
-#define HCX_NMEA0183_PCAPNG		25
-#define HCX_RCASCAN			26
-#define HCX_RD_SORT			27
+#define HCX_EXIT_ON_EAPOL		20
+#define HCX_ON_ERROR			21
+#define HCX_ESSIDLIST			22
+#define HCX_NMEA0183			23
+#define HCX_GPSD			24
+#define HCX_NMEA0183_OUT		25
+#define HCX_NMEA0183_PCAPNG		26
+#define HCX_RCASCAN			27
+#define HCX_RD_SORT			28
 #define HCX_IFNAME			'i'
 #define HCX_PCAPNGNAME			'w'
 #define HCX_INTERFACE_INFO		'I'
 #define HCX_SET_MONITORMODE		'm'
-#define HCX_SET_MONITORMODE_PASSIVE	'p'
+#define HCX_SET_MONITORMODE_ACTIVE	'A'
 #define HCX_SET_SCANLIST_FROM_USER_CH	'c'
 #define HCX_SET_SCANLIST_FROM_USER_FREQ	'f'
 #define HCX_SET_SCANLIST_FROM_INTERFACE	'F'
 #define HCX_SHOW_INTERFACE_LIST		'L'
+#define HCX_SHOW_INTERFACE_LIST_SHORT	'l'
 #define HCX_HOLD_TIME			't'
 #define HCX_HELP			'h'
+#define HCX_HELP_ADDITIONAL		'H'
 #define HCX_VERSION			'v'
 /*---------------------------------------------------------------------------*/
-#define EXIT_EVENT_MASK		0x1f
-#define EXIT_ON_SIGTERM		0x01
-#define EXIT_ON_GPIOBUTTON	0x02
-#define EXIT_ON_TOT		0x04
-#define EXIT_ON_WATCHDOG	0x08
-#define EXIT_ON_ERROR		0x10
+#define EXIT_ON_SIGTERM		0x0001
+#define EXIT_ON_GPIOBUTTON	0x0002
+#define EXIT_ON_TOT		0x0004
+#define EXIT_ON_WATCHDOG	0x0008
+#define EXIT_ON_EAPOL_PMKID	0x0010
+#define EXIT_ON_EAPOL_M3	0x0020
+#define EXIT_ON_EAPOL_M2	0x0040
+#define EXIT_ON_EAPOL_M1	0x0080
+#define EXIT_ON_ERROR		0x0100
 
 #define EXIT_ACTION_REBOOT	0x01
 #define EXIT_ACTION_POWEROFF	0x02
@@ -87,11 +95,17 @@
 #define DRIVERNAME_MAX		32
 #define EAPOLM2TIMEOUT		20000000ULL
 #define EAPOLM3TIMEOUT		20000000ULL
+#define EAPOLM4TIMEOUT		20000000ULL
 
-#define BEACONTX_MAX		10
-#define PROBERESPONSETX_MAX	10
 
-#define PCAPNG_SNAPLEN		0xffff
+#define DRIVER_FORMAT		128
+#define DRIVER_LINK		128
+
+#define RCAD_MAX		40
+
+#define PROBERESPONSETX_MAX	5
+
+#define PCAPNG_SNAPLEN		0x400
 #define RTD_LEN			9128
 
 #define TIMESTRING_LEN		128
@@ -113,14 +127,18 @@
 /*===========================================================================*/
 typedef struct
 {
- u8	status;
+ u16	status;
  u8	macap[6];
  u8	kdv1;
  u64	replaycountm1;
  u8	noncem1[4];
  u8	kdv2;
  u64	replaycountm2;
-}authseqakt_t;
+ u8	kdv3;
+ u64	replaycountm3;
+ u8	kdv4;
+ u64	replaycountm4;
+ }authseqakt_t;
 #define AUTHSEQAKT_SIZE (sizeof(authseqakt_t))
 /*---------------------------------------------------------------------------*/
 typedef struct __attribute__((__packed__))
@@ -132,17 +150,17 @@ typedef struct __attribute__((__packed__))
 /*---------------------------------------------------------------------------*/
 typedef struct __attribute__((__packed__))
 {
-#define	APIE_ESSID	0x001
-#define APGS_CCMP	0x002
-#define APGS_TKIP	0x004
-#define APCS_CCMP	0x008
-#define APCS_TKIP	0x010
-#define APRSNAKM_PSK	0x020
-#define APRSNAKM_PSK256	0x040
-#define APRSNAKM_PSKFT	0x080
-#define APWPAAKM_PSK	0x100
-#define APAKM_MASK	0x1e0
-#define AP_MFP		0x200
+#define	APIE_ESSID	0x0001
+#define APGS_CCMP	0x0002
+#define APGS_TKIP	0x0004
+#define APCS_CCMP	0x0008
+#define APCS_TKIP	0x0010
+#define APRSNAKM_PSK	0x0020
+#define APRSNAKM_PSK256	0x0040
+#define APRSNAKM_PSKFT	0x0080
+#define APWPAAKM_PSK	0x0100
+#define APAKM_MASK	0x01e0
+#define AP_MFP		0x0200
  u8	flags;
  u8	essidlen;
  u8	essid[ESSID_MAX];
@@ -156,20 +174,22 @@ typedef struct __attribute__((__packed__))
  u64	tshold1;
  u64	tsauth;
  u32	count;
+ u32	frequency;
  u8	macap[6];
  u8	macclient[6];
- u8	status;
+ u16	status;
 #define AP_IN_RANGE_TOT		120000000000ULL
-#define AP_IN_RANGE		0x01
-#define AP_IN_RANGE_MASK	0xfe
-#define AP_ESSID		0x02
-#define AP_BEACON		0x04
-#define AP_PROBERESPONSE	0x08
-#define AP_EAPOL_M1		0x10
-#define AP_EAPOL_M2		0x20
-#define AP_EAPOL_M3		0x40
-#define AP_PMKID		0x80
-#define AP_PMKID_EAPOL		0xc0
+#define AP_IN_RANGE		0x0001
+#define AP_IN_RANGE_MASK	0xfffe
+#define AP_ESSID		0x0002
+#define AP_BEACON		0x0004
+#define AP_PROBERESPONSE	0x0008
+#define AP_EAPOL_M1		0x0010
+#define AP_EAPOL_M2		0x0020
+#define AP_EAPOL_M3		0x0040
+#define AP_EAPOL_M4		0x0080
+#define AP_PMKID		0x0100
+#define AP_PMKID_EAPOL		0x01f0
 
  infoelement_t	ie;
 }aplist_t;
@@ -185,7 +205,19 @@ else if(ai->tsakt > bi->tsakt) return -1;
 return 0;
 }
 /*---------------------------------------------------------------------------*/
-#ifdef STATUSOUT
+static int sort_aplist_by_count(const void *a, const void *b)
+{
+const aplist_t *ai = (const aplist_t *)a;
+const aplist_t *bi = (const aplist_t *)b;
+
+if(ai->count < bi->count) return 1;
+else if(ai->count > bi->count) return -1;
+if(ai->tsakt < bi->tsakt) return 1;
+else if(ai->tsakt > bi->tsakt) return -1;
+return 0;
+}
+/*---------------------------------------------------------------------------*/
+#ifdef HCXSTATUSOUT
 static int sort_aplist_by_status(const void *a, const void *b)
 {
 const aplist_t *ai = (const aplist_t *)a;
@@ -245,7 +277,7 @@ else if(ai->tsakt > bi->tsakt) return -1;
 return 0;
 }
 /*---------------------------------------------------------------------------*/
-#ifdef STATUSOUT
+#ifdef HCXSTATUSOUT
 static int sort_clientlist_by_status(const void *a, const void *b)
 {
 const clientlist_t *ai = (const clientlist_t *)a;
@@ -330,5 +362,5 @@ typedef struct
 }req_t;
 /*===========================================================================*/
 static bool read_bpf(char *bpfname);
-static inline bool nl_set_frequency();
+static inline bool nl_set_frequency(void);
 /*===========================================================================*/
